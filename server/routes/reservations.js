@@ -8,9 +8,9 @@ let reservations = [
         destinationId: 1,
         numeroReservation: "RES-2024-001",
         client: {
-            nom: "Dupont",
-            prenom: "Jean",
-            email: "jean.dupont@email.com",
+            nom: "Brouzes",
+            prenom: "Antoine",
+            email: "Antoine@email.com",
             telephone: "0123456789"
         },
         nombrePersonnes: 2,
@@ -25,17 +25,17 @@ let reservations = [
         destinationId: 2,
         numeroReservation: "RES-2024-002",
         client: {
-            nom: "Martin",
-            prenom: "Sophie",
-            email: "sophie.martin@email.com",
+            nom: "Rothchild",
+            prenom: "Arnaud",
+            email: "Arnaud@Rothchild.com",
             telephone: "0123456790"
         },
-        nombrePersonnes: 4,
+        nombrePersonnes: 1,
         dateReservation: "2024-05-21T14:15:00.000Z",
         dateVoyage: "2024-08-01",
-        prixTotal: 5196,
+        prixTotal: 51960,
         statut: "en_attente",
-        commentaires: "Voyage en famille"
+        commentaires: "Consultation des comptes"
     }
 ];
 
