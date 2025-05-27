@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Destination {
+  id                Int        @id @default(autoincrement())
+  nom               String
+  description       String
+  prix              Float
+  duree             Int
+  image             String?
+  disponible        Boolean    @default(true)
+  categorie         String
+  dateDepart        DateTime
+  placesDisponibles Int
+  reservations      Reservation[]
+  activites         Activite[]  // ← relation 1-n
+}
+
+model Activite {
+  id            Int          @id @default(autoincrement())
+  nom           String
+  destination   Destination  @relation(fields: [destinationId], references: [id])
+  destinationId Int
+}
+
+
+model Client {
+  id        Int          @id @default(autoincrement())
+  nom       String
+  prenom    String
+  email     String       @unique
+  telephone String
+  reservations Reservation[]
+}
+
+model Reservation {
+  id                Int       @id @default(autoincrement())
+  numeroReservation String    @unique
+  destination       Destination @relation(fields: [destinationId], references: [id])
+  destinationId     Int
+  client            Client     @relation(fields: [clientId], references: [id])
+  clientId          Int
+  nombrePersonnes   Int
+  dateReservation   DateTime  @default(now())
+  dateVoyage        DateTime
+  prixTotal         Float
+  statut            String    @default("en_attente")
+  commentaires      String?
+}
+

@@ -1,18 +1,19 @@
 // middleware/validation.js
 
 // Middleware pour valider les données JSON
-const validateJsonData = (req, res, next) => {
-    // Vérifier si le Content-Type est correct pour les requêtes POST/PUT
-    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-        if (!req.is('application/json')) {
-            return res.status(400).json({
-                success: false,
-                message: "Content-Type doit être application/json"
-            });
-        }
+function validateJsonData(req, res, next) {
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    const contentType = req.headers['content-type'];
+    if (!contentType || !contentType.includes('application/json')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Content-Type doit être application/json'
+      });
     }
-    next();
-};
+  }
+  next();
+}
+
 
 // Middleware pour valider les paramètres de pagination
 const validatePagination = (req, res, next) => {
