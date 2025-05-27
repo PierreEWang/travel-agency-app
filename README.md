@@ -11,8 +11,10 @@ cd travel-agency-app
 
 # Installer les dépendances
 npm install
-cd server && npm install
-cd ../client && npm install
+cd server
+npm install
+cd ../client
+npm install
 cd ..
 ```
 
