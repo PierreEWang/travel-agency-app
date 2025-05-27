@@ -1,1 +1,1 @@
-Faire un fichier .env.test et mettreDATABASE_URL="file:./test.db"# 1. Installer les dépendances si pas déjà faitnpm install# 2. Générer le client Prismanpx prisma generate# 3. Initialiser la base de données de testnpm run test:setup# 4. Lancer les testsnpm test
+Faire un fichier .env.test et mettreDATABASE_URL="file:./test.db"# 1. Installer les dï¿½pendances si pas dï¿½jï¿½ faitnpm install# 2. Gï¿½nï¿½rer le client Prismanpm run db:generate# 3. Initialiser la base de donnï¿½esnpm run db:seed# 4. Lancer les testsnpm test
