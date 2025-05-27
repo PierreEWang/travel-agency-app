@@ -1,43 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Données simulées pour les réservations
-let reservations = [
-    {
-        id: 1,
-        destinationId: 1,
-        numeroReservation: "RES-2024-001",
-        client: {
-            nom: "Brouzes",
-            prenom: "Antoine",
-            email: "Antoine@email.com",
-            telephone: "0123456789"
-        },
-        nombrePersonnes: 2,
-        dateReservation: "2024-05-20T10:30:00.000Z",
-        dateVoyage: "2024-07-15",
-        prixTotal: 1798,
-        statut: "confirmee",
-        commentaires: "Voyage de noces"
-    },
-    {
-        id: 2,
-        destinationId: 2,
-        numeroReservation: "RES-2024-002",
-        client: {
-            nom: "Rothchild",
-            prenom: "Arnaud",
-            email: "Arnaud@Rothchild.com",
-            telephone: "0123456790"
-        },
-        nombrePersonnes: 1,
-        dateReservation: "2024-05-21T14:15:00.000Z",
-        dateVoyage: "2024-08-01",
-        prixTotal: 51960,
-        statut: "en_attente",
-        commentaires: "Consultation des comptes"
-    }
-];
+function genererNumeroReservation() {
+  return 'RES-' + Date.now();
+}
 
 // Fonction pour générer un numéro de réservation unique
 function genererNumeroReservation() {
@@ -197,68 +165,84 @@ router.get('/numero/:numero', (req, res) => {
     }
 });
 
-// POST /api/reservations - Créer une nouvelle réservation
-router.post('/', (req, res) => {
-    try {
-        const { destinationId, client, nombrePersonnes, dateVoyage, commentaires } = req.body;
+function validerDonneesReservation(body) {
+  const erreurs = [];
+  if (!body.destinationId) erreurs.push("destinationId est obligatoire");
+  if (!body.client || !body.client.nom || !body.client.prenom || !body.client.email) {
+    erreurs.push("Les informations du client sont incomplètes");
+  }
+  if (!body.nombrePersonnes || body.nombrePersonnes <= 0) {
+    erreurs.push("nombrePersonnes doit être supérieur à 0");
+  }
+  return erreurs;
+}
 
-        // Validation des données
-        const erreurs = validerDonneesReservation(req.body);
+router.post('/', async (req, res) => {
+  try {
+    const { destinationId, client, nombrePersonnes, dateVoyage, commentaires } = req.body;
 
-        if (erreurs.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Données invalides",
-                erreurs: erreurs
-            });
-        }
-
-        // Vérifier si la destination existe (simulation)
-        const destinationsDisponibles = [1, 2, 3, 4]; // IDs des destinations existantes
-        if (!destinationsDisponibles.includes(parseInt(destinationId))) {
-            return res.status(404).json({
-                success: false,
-                message: "Destination non trouvée"
-            });
-        }
-
-        // Calculer le prix total (simulation)
-        const prixParPersonne = 899; // Prix de base
-        const prixTotal = prixParPersonne * nombrePersonnes;
-
-        // Créer la nouvelle réservation
-        const nouvelleReservation = {
-            id: Math.max(...reservations.map(r => r.id)) + 1,
-            destinationId: parseInt(destinationId),
-            numeroReservation: genererNumeroReservation(),
-            client: {
-                nom: client.nom.trim(),
-                prenom: client.prenom.trim(),
-                email: client.email.trim().toLowerCase(),
-                telephone: client.telephone.trim()
-            },
-            nombrePersonnes: parseInt(nombrePersonnes),
-            dateReservation: new Date().toISOString(),
-            dateVoyage: dateVoyage,
-            prixTotal: prixTotal,
-            statut: "en_attente",
-            commentaires: commentaires || ""
-        };
-
-        reservations.push(nouvelleReservation);
-
-        res.status(201).json({
-            success: true,
-            message: "Réservation créée avec succès",
-            data: nouvelleReservation
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Erreur lors de la création de la réservation",
-            error: error.message
-        });
+    // Validation
+    const erreurs = validerDonneesReservation(req.body);
+    if (erreurs.length > 0) {
+      return res.status(400).json({ success: false, message: "Données invalides", erreurs });
     }
+
+    // Vérifier que la destination existe
+    const destinationExistante = await prisma.destination.findUnique({
+      where: { id: parseInt(destinationId) }
+    });
+    if (!destinationExistante) {
+      return res.status(404).json({ success: false, message: "Destination non trouvée" });
+    }
+
+    // Vérifier si client existe par email
+    let clientExistant = await prisma.client.findUnique({
+      where: { email: client.email.trim().toLowerCase() }
+    });
+
+    // Sinon créer le client
+    if (!clientExistant) {
+      clientExistant = await prisma.client.create({
+        data: {
+          nom: client.nom.trim(),
+          prenom: client.prenom.trim(),
+          email: client.email.trim().toLowerCase(),
+          telephone: client.telephone ? client.telephone.trim() : null,
+        }
+      });
+    }
+
+    // Calcul du prix total
+    const prixTotal = destinationExistante.price * nombrePersonnes;
+
+    // Créer la réservation
+    const nouvelleReservation = await prisma.reservation.create({
+      data: {
+        destinationId: destinationExistante.id,
+        clientId: clientExistant.id,
+        numeroReservation: genererNumeroReservation(),
+        nombrePersonnes: parseInt(nombrePersonnes),
+        dateVoyage: new Date(dateVoyage),
+        prixTotal,
+        statut: "en_attente",
+        commentaires: commentaires || ""
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Réservation créée avec succès",
+      data: nouvelleReservation
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la création de la réservation",
+      error: error.message
+    });
+  }
 });
 
 // PATCH /api/reservations/:id/statut - Changer le statut d'une réservation
