@@ -211,71 +211,54 @@ router.get('/:id', (req, res) => {
     }
 });
 
-// POST /api/destinations - Ajouter une nouvelle destination (admin)
-router.post('/', (req, res) => {
-    try {
-        const { nom, description, prix, duree, image, categorie, activites, dateDepart, placesDisponibles } = req.body;
 
-        // Validation des données
-        const erreurs = [];
 
-        if (!nom || nom.trim().length < 3) {
-            erreurs.push("Le nom doit contenir au moins 3 caractères");
-        }
+router.post('/', async (req, res) => {
+  try {
+    const {
+      nom, description, prix, duree, image,
+      categorie, activites, dateDepart, placesDisponibles
+    } = req.body;
 
-        if (!description || description.trim().length < 10) {
-            erreurs.push("La description doit contenir au moins 10 caractères");
-        }
-
-        if (!prix || prix <= 0) {
-            erreurs.push("Le prix doit être supérieur à 0");
-        }
-
-        if (!duree || duree <= 0) {
-            erreurs.push("La durée doit être supérieure à 0");
-        }
-
-        if (!categorie) {
-            erreurs.push("La catégorie est obligatoire");
-        }
-
-        if (erreurs.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Données invalides",
-                erreurs: erreurs
-            });
-        }
-
-        // Créer nouvelle destination
-        const nouvelleDestination = {
-            id: Math.max(...destinations.map(d => d.id)) + 1,
-            nom: nom.trim(),
-            description: description.trim(),
-            prix: parseFloat(prix),
-            duree: parseInt(duree),
-            image: image || "https://via.placeholder.com/400x300",
-            disponible: true,
-            categorie: categorie.toLowerCase(),
-            activites: activites || [],
-            dateDepart: dateDepart || new Date().toISOString().split('T')[0],
-            placesDisponibles: placesDisponibles || 20
-        };
-
-        destinations.push(nouvelleDestination);
-
-        res.status(201).json({
-            success: true,
-            message: "Destination créée avec succès",
-            data: nouvelleDestination
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Erreur lors de la création de la destination",
-            error: error.message
-        });
+    // Validation comme avant (optionnellement extraire en fonction séparée)
+    const erreurs = [];
+    if (!nom || nom.trim().length < 3) erreurs.push("Le nom doit contenir au moins 3 caractères");
+    if (!description || description.trim().length < 10) erreurs.push("La description doit contenir au moins 10 caractères");
+    if (!prix || prix <= 0) erreurs.push("Le prix doit être supérieur à 0");
+    if (!duree || duree <= 0) erreurs.push("La durée doit être supérieure à 0");
+    if (!categorie) erreurs.push("La catégorie est obligatoire");
+    if (erreurs.length > 0) {
+      return res.status(400).json({ success: false, message: "Données invalides", erreurs });
     }
+
+    // Créer la destination en base via Prisma
+    const nouvelleDestination = await prisma.destination.create({
+      data: {
+        nom: nom.trim(),
+        description: description.trim(),
+        prix: parseFloat(prix),
+        duree: parseInt(duree),
+        image: image || "https://via.placeholder.com/400x300",
+        disponible: true,
+        categorie: categorie.toLowerCase(),
+        activites: activites || [],
+        dateDepart: dateDepart || new Date().toISOString().split('T')[0],
+        placesDisponibles: placesDisponibles || 20
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Destination créée avec succès",
+      data: nouvelleDestination
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la création de la destination",
+      error: error.message
+    });
+  }
 });
 
 // PUT /api/destinations/:id - Mettre à jour une destination
