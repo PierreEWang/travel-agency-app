@@ -1,5 +1,19 @@
 const express = require('express');
+const { PrismaClient } = require('@prisma/client');
 const router = express.Router();
+const prisma = new PrismaClient();
+
+// GET /api/destinations
+router.get('/', async (req, res) => {
+  try {
+    const destinations = await prisma.destination.findMany();
+    res.json({ success: true, data: destinations });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = router;
 
 // Données simulées pour les destinations (en attendant une vraie base de données)
 let destinations = [

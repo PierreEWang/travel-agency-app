@@ -25,3 +25,14 @@ Thumbs.db
 *.log
 npm-debug.log*
 /repomix-output.xml
+
+
+**/generated/prisma
+dev.db
+*.env*
+!.env.example
+package-lock.json
+**/generated/prisma/
+databases/**/migrations/
+experimental/**/*.db
+**/prisma/*
