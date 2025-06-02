@@ -35,7 +35,7 @@ model Client {
   nom       String
   prenom    String
   email     String       @unique
-  telephone String
+  telephone String?
   reservations Reservation[]
 }
 
