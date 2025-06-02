@@ -1,1 +1,0 @@
-Faire un fichier .env.test et mettreDATABASE_URL="file:./test.db"# 1. Installer les d�pendances si pas d�j� faitnpm install# 2. G�n�rer le client Prismanpm run db:generate# 3. Initialiser la base de donn�esnpm run db:seed# 4. Lancer les testsnpm test# Pour migrer la dbnpx prisma migrate dev --name init

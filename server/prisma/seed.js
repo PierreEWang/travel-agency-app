@@ -12,8 +12,21 @@ async function main() {
 
     // Créer des destinations avec activités
     const destinations = await Promise.all([
-        prisma.destination.create({
-            data: {
+        // Ensure Paris is the first destination with ID 1
+        prisma.destination.upsert({
+            where: { id: 1 },
+            update: {
+                nom: "Paris, France",
+                description: "La ville lumière avec ses monuments iconiques. Découvrez l'art, la culture et la gastronomie française dans cette métropole emblématique.",
+                prix: 899,
+                duree: 5,
+                image: "https://files.catbox.moe/dtixs8.jpg",
+                categorie: "ville",
+                dateDepart: new Date('2024-07-15'),
+                placesDisponibles: 25
+            },
+            create: {
+                id: 1,
                 nom: "Paris, France",
                 description: "La ville lumière avec ses monuments iconiques. Découvrez l'art, la culture et la gastronomie française dans cette métropole emblématique.",
                 prix: 899,

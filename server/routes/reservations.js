@@ -114,7 +114,7 @@ router.post('/', async (req, res) => {
     }
 
     // Calcul du prix total
-    const prixTotal = destinationExistante.price * nombrePersonnes;
+    const prixTotal = destinationExistante.prix * nombrePersonnes;
 
     // Créer la réservation
     const nouvelleReservation = await prisma.reservation.create({
