@@ -47,16 +47,16 @@ curl -X POST http://localhost:5000/api/destinations \
 curl -X POST http://localhost:5000/api/reservations \
   -H "Content-Type: application/json" \
   -d '{
-    "destinationId": 1,
-    "client": {
-      "nom": "Dupont",
-      "prenom": "Marie",
-      "email": "marie.dupont@email.com",
-      "telephone": "0123456789"
-    },
-    "nombrePersonnes": 2,
-    "dateVoyage": "2024-07-15",
-    "commentaires": "Voyage anniversaire"
+	"destinationId": 1,
+	"client": {
+	  "nom": "Dupont",
+	  "prenom": "Marie",
+	  "email": "marie.dupont@email.com",
+	  "telephone": "0123456789"
+	},
+	"nombrePersonnes": 2,
+	"dateVoyage": "2025-07-15",
+	"commentaires": "Voyage anniversaire"
   }'
 ```
 
