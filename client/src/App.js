@@ -65,17 +65,50 @@ function App() {
   };
 
   // Fonction pour récupérer les réservations
-  const fetchReservations = async () => {
-    try {
-      const response = await fetch(`${API_URL}/reservations`);
-      if (response.ok) {
-        const data = await response.json();
-        setReservations(data.data || []);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la récupération des réservations:', error);
+ // Fonction pour récupérer les réservations avec infos destinations
+const fetchReservations = async () => {
+  try {
+    const response = await fetch(`${API_URL}/reservations`);
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Enrichir chaque réservation avec les données de la destination
+      const reservationsEnrichies = await Promise.all(
+        (data.data || []).map(async (reservation) => {
+          try {
+            // Récupérer les détails de la destination
+            const destResponse = await fetch(`${API_URL}/destinations/${reservation.destinationId}`);
+            if (destResponse.ok) {
+              const destData = await destResponse.json();
+              return {
+                ...reservation,
+                destination: destData.data // Ajouter les infos de la destination
+              };
+            }
+          } catch (error) {
+            console.error('Erreur destination:', error);
+          }
+          
+          // Si erreur, retourner la réservation avec destination basique
+          return {
+            ...reservation,
+            destination: {
+              nom: 'Destination inconnue',
+              description: 'Informations non disponibles',
+              prix: reservation.prixTotal / reservation.nombrePersonnes || 0,
+              duree: 'Non spécifié',
+              categorie: 'Non spécifié'
+            }
+          };
+        })
+      );
+      
+      setReservations(reservationsEnrichies);
     }
-  };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des réservations:', error);
+  }
+};
 
   // Fonction pour ajouter une destination
   const addDestination = async () => {
@@ -720,123 +753,200 @@ function App() {
 
           {/* Liste des réservations */}
           <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-                <span className="text-4xl mr-3">📋</span>
-                Réservations en cours
-              </h2>
-              <div className="bg-green-600 text-white px-4 py-2 rounded-full font-bold">
-                {reservations.length} réservation{reservations.length > 1 ? 's' : ''}
+  <div className="flex items-center justify-between mb-6">
+    <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+      <span className="text-4xl mr-3">📋</span>
+      Réservations en cours
+    </h2>
+    <div className="bg-green-600 text-white px-4 py-2 rounded-full font-bold">
+      {reservations.length} réservation{reservations.length > 1 ? 's' : ''}
+    </div>
+  </div>
+
+  {reservations.length === 0 ? (
+    <div className="text-center py-20 bg-white rounded-2xl shadow-xl">
+      <div className="text-6xl mb-4">📝</div>
+      <p className="text-gray-500 text-xl mb-4">
+        Aucune réservation pour le moment
+      </p>
+      <p className="text-gray-400">
+        Les réservations apparaîtront ici une fois créées
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-6">
+      {reservations.map((reservation) => (
+        <div 
+          key={reservation.id} 
+          className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
+            <div className="flex items-center mb-4 lg:mb-0">
+              <span className="text-2xl mr-3">🎫</span>
+              <div>
+                <h3 className="text-xl font-bold text-blue-600">
+                  {reservation.numeroReservation}
+                </h3>
+                {/* 🎯 NOUVEAU : Affichage du nom de la destination */}
+                <h4 className="text-lg font-semibold text-gray-800 mt-1">
+                  📍 {reservation.destination?.nom || 'Destination inconnue'}
+                </h4>
               </div>
             </div>
-
-            {reservations.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-2xl shadow-xl">
-                <div className="text-6xl mb-4">📝</div>
-                <p className="text-gray-500 text-xl mb-4">
-                  Aucune réservation pour le moment
-                </p>
-                <p className="text-gray-400">
-                  Les réservations apparaîtront ici une fois créées
-                </p>
+            
+            <div className="flex items-center space-x-3">
+              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${
+                reservation.statut === 'confirmee' 
+                  ? 'bg-green-100 text-green-800 border-green-200' 
+                  : reservation.statut === 'en_attente'
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  : 'bg-red-100 text-red-800 border-red-200'
+              }`}>
+                {reservation.statut === 'confirmee' && '✅ Confirmée'}
+                {reservation.statut === 'en_attente' && '⏳ En attente'}
+                {reservation.statut === 'annulee' && '❌ Annulée'}
+              </span>
+              
+              <div className="text-right">
+                <div className="text-2xl font-bold text-gray-800">
+                  {reservation.prixTotal}€
+                </div>
+                <div className="text-sm text-gray-500">
+                  Prix total
+                </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {reservations.map((reservation) => (
-                  <div 
-                    key={reservation.id} 
-                    className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:scale-105 transition-all duration-300"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                      <div className="flex items-center mb-2 md:mb-0">
-                        <span className="text-2xl mr-3">🎫</span>
-                        <h3 className="text-xl font-bold text-blue-600">
-                          {reservation.numeroReservation}
-                        </h3>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${
-                          reservation.statut === 'confirmee' 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : reservation.statut === 'en_attente'
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                            : 'bg-red-100 text-red-800 border-red-200'
-                        }`}>
-                          {reservation.statut === 'confirmee' && '✅ Confirmée'}
-                          {reservation.statut === 'en_attente' && '⏳ En attente'}
-                          {reservation.statut === 'annulee' && '❌ Annulée'}
-                        </span>
-                        
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-gray-800">
-                            {reservation.prixTotal}€
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Prix total
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl">
-                      <div className="text-center md:text-left">
-                        <div className="text-sm font-medium text-gray-500 mb-1">👤 Client</div>
-                        <div className="font-semibold text-gray-800">
-                          {reservation.client?.nom} {reservation.client?.prenom}
-                        </div>
-                        {reservation.client?.email && (
-                          <div className="text-sm text-gray-600">
-                            📧 {reservation.client.email}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="text-center md:text-left">
-                        <div className="text-sm font-medium text-gray-500 mb-1">👥 Voyageurs</div>
-                        <div className="font-semibold text-gray-800">
-                          {reservation.nombrePersonnes} personne{reservation.nombrePersonnes > 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      
-                      <div className="text-center md:text-left">
-                        <div className="text-sm font-medium text-gray-500 mb-1">📅 Date voyage</div>
-                        <div className="font-semibold text-gray-800">
-                          {new Date(reservation.dateVoyage).toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </div>
-                      </div>
-                      
-                      <div className="text-center md:text-left">
-                        <div className="text-sm font-medium text-gray-500 mb-1">📋 Réservé le</div>
-                        <div className="font-semibold text-gray-800">
-                          {new Date(reservation.dateReservation).toLocaleDateString('fr-FR')}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {reservation.commentaires && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-xl border-l-4 border-blue-400">
-                        <div className="flex items-start">
-                          <span className="text-xl mr-2">💭</span>
-                          <div>
-                            <div className="text-sm font-medium text-blue-800 mb-1">Commentaires:</div>
-                            <div className="text-blue-700 italic">
-                              {reservation.commentaires}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+            </div>
+          </div>
+          
+          {/* 🎯 NOUVEAU : Informations détaillées de la destination */}
+          {reservation.destination && (
+            <div className="bg-blue-50 p-4 rounded-xl mb-4">
+              <h5 className="font-semibold text-blue-900 mb-2 flex items-center">
+                <span className="mr-2">🌍</span>
+                Détails de la destination
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <span className="text-blue-700 font-medium">Catégorie :</span>
+                  <div className="text-blue-800 capitalize font-semibold">
+                    {reservation.destination.categorie === 'ville' && '🏙️'} 
+                    {reservation.destination.categorie === 'plage' && '🏖️'} 
+                    {reservation.destination.categorie === 'culture' && '🎭'} 
+                    {reservation.destination.categorie === 'aventure' && '🏔️'} 
+                    {reservation.destination.categorie === 'detente' && '🧘'} 
+                    {reservation.destination.categorie}
                   </div>
-                ))}
+                </div>
+                <div>
+                  <span className="text-blue-700 font-medium">Durée :</span>
+                  <div className="text-blue-800 font-semibold">
+                    ⏰ {reservation.destination.duree} jours
+                  </div>
+                </div>
+                <div>
+                  <span className="text-blue-700 font-medium">Prix/pers :</span>
+                  <div className="text-blue-800 font-semibold">
+                    💰 {reservation.destination.prix}€
+                  </div>
+                </div>
+                <div>
+                  <span className="text-blue-700 font-medium">Places restantes :</span>
+                  <div className="text-blue-800 font-semibold">
+                    👥 {reservation.destination.placesDisponibles || 'N/A'}
+                  </div>
+                </div>
               </div>
-            )}
-          </section>
+              
+              {/* Description de la destination */}
+              {reservation.destination.description && (
+                <div className="mt-3 p-3 bg-white rounded-lg">
+                  <span className="text-blue-700 font-medium text-sm">Description :</span>
+                  <p className="text-gray-700 text-sm mt-1 leading-relaxed">
+                    {reservation.destination.description}
+                  </p>
+                </div>
+              )}
+              
+              {/* Activités si disponibles */}
+              {reservation.destination.activites && reservation.destination.activites.length > 0 && (
+                <div className="mt-3 p-3 bg-white rounded-lg">
+                  <span className="text-blue-700 font-medium text-sm flex items-center mb-2">
+                    <span className="mr-1">✨</span>
+                    Activités incluses :
+                  </span>
+                  <div className="grid grid-cols-2 gap-1">
+                    {reservation.destination.activites.map((activite, index) => (
+                      <div key={index} className="text-gray-700 text-sm flex items-center">
+                        <span className="text-green-500 mr-1 text-xs">✓</span>
+                        {activite.nom}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Informations client et voyage (existant) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl">
+            <div className="text-center md:text-left">
+              <div className="text-sm font-medium text-gray-500 mb-1">👤 Client</div>
+              <div className="font-semibold text-gray-800">
+                {reservation.client?.nom} {reservation.client?.prenom}
+              </div>
+              {reservation.client?.email && (
+                <div className="text-sm text-gray-600">
+                  📧 {reservation.client.email}
+                </div>
+              )}
+            </div>
+            
+            <div className="text-center md:text-left">
+              <div className="text-sm font-medium text-gray-500 mb-1">👥 Voyageurs</div>
+              <div className="font-semibold text-gray-800">
+                {reservation.nombrePersonnes} personne{reservation.nombrePersonnes > 1 ? 's' : ''}
+              </div>
+            </div>
+            
+            <div className="text-center md:text-left">
+              <div className="text-sm font-medium text-gray-500 mb-1">📅 Date voyage</div>
+              <div className="font-semibold text-gray-800">
+                {new Date(reservation.dateVoyage).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </div>
+            </div>
+            
+            <div className="text-center md:text-left">
+              <div className="text-sm font-medium text-gray-500 mb-1">📋 Réservé le</div>
+              <div className="font-semibold text-gray-800">
+                {new Date(reservation.dateReservation).toLocaleDateString('fr-FR')}
+              </div>
+            </div>
+          </div>
+          
+          {/* Commentaires */}
+          {reservation.commentaires && (
+            <div className="mt-4 p-4 bg-green-50 rounded-xl border-l-4 border-green-400">
+              <div className="flex items-start">
+                <span className="text-xl mr-2">💭</span>
+                <div>
+                  <div className="text-sm font-medium text-green-800 mb-1">Commentaires :</div>
+                  <div className="text-green-700 italic">
+                    {reservation.commentaires}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+</section>
         </div>
       )}
 
