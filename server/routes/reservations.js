@@ -110,6 +110,14 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ success: false, message: "Destination non trouvée" });
     }
 
+    // Vérifier s'il y a assez de places disponibles
+    if (destinationExistante.placesDisponibles < nombrePersonnes) {
+      return res.status(400).json({
+        success: false,
+        message: "Pas assez de places disponibles pour cette réservation"
+      });
+    }
+
     // Vérifier si client existe par email
     let clientExistant = await prisma.client.findUnique({
       where: { email: client.email.trim().toLowerCase() }
@@ -130,18 +138,31 @@ router.post('/', async (req, res) => {
     // Calcul du prix total
     const prixTotal = destinationExistante.prix * nombrePersonnes;
 
-    // Créer la réservation
-    const nouvelleReservation = await prisma.reservation.create({
-      data: {
-        destinationId: destinationExistante.id,
-        clientId: clientExistant.id,
-        numeroReservation: genererNumeroReservation(),
-        nombrePersonnes: parseInt(nombrePersonnes),
-        dateVoyage: new Date(dateVoyage),
-        prixTotal,
-        statut: "en_attente",
-        commentaires: commentaires || ""
-      }
+    // Utiliser une transaction pour créer la réservation et mettre à jour les places disponibles
+    const nouvelleReservation = await prisma.$transaction(async (prisma) => {
+      // Créer la réservation
+      const reservation = await prisma.reservation.create({
+        data: {
+          destinationId: destinationExistante.id,
+          clientId: clientExistant.id,
+          numeroReservation: genererNumeroReservation(),
+          nombrePersonnes: parseInt(nombrePersonnes),
+          dateVoyage: new Date(dateVoyage),
+          prixTotal,
+          statut: "en_attente",
+          commentaires: commentaires || ""
+        }
+      });
+
+      // Mettre à jour les places disponibles de la destination
+      await prisma.destination.update({
+        where: { id: destinationExistante.id },
+        data: {
+          placesDisponibles: destinationExistante.placesDisponibles - parseInt(nombrePersonnes)
+        }
+      });
+
+      return reservation;
     });
 
     res.status(201).json({
@@ -173,15 +194,51 @@ router.patch('/:id/statut', async (req, res) => {
       });
     }
 
-    const reservation = await prisma.reservation.update({
+    // Récupérer la réservation actuelle avec sa destination
+    const reservationActuelle = await prisma.reservation.findUnique({
       where: { id },
-      data: { statut }
+      include: { destination: true }
+    });
+
+    if (!reservationActuelle) {
+      return res.status(404).json({
+        success: false,
+        message: "Réservation non trouvée"
+      });
+    }
+
+    // Utiliser une transaction pour mettre à jour le statut et gérer les places disponibles
+    const resultat = await prisma.$transaction(async (prisma) => {
+      // Si le statut passe à "annulee" et n'était pas déjà "annulee", restaurer les places
+      if (statut === 'annulee' && reservationActuelle.statut !== 'annulee') {
+        await prisma.destination.update({
+          where: { id: reservationActuelle.destinationId },
+          data: {
+            placesDisponibles: reservationActuelle.destination.placesDisponibles + reservationActuelle.nombrePersonnes
+          }
+        });
+      }
+      // Si le statut passe de "annulee" à un autre statut, réduire à nouveau les places
+      else if (reservationActuelle.statut === 'annulee' && statut !== 'annulee') {
+        await prisma.destination.update({
+          where: { id: reservationActuelle.destinationId },
+          data: {
+            placesDisponibles: reservationActuelle.destination.placesDisponibles - reservationActuelle.nombrePersonnes
+          }
+        });
+      }
+
+      // Mettre à jour le statut de la réservation
+      return await prisma.reservation.update({
+        where: { id },
+        data: { statut }
+      });
     });
 
     res.json({
       success: true,
       message: `Statut mis à jour vers "${statut}"`,
-      data: reservation
+      data: resultat
     });
 
   } catch (error) {
@@ -249,5 +306,65 @@ router.get('/', async (req, res) => {
   }
 });
 
+
+// DELETE /api/reservations/:id - Supprimer une réservation
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID invalide"
+      });
+    }
+
+    // Récupérer la réservation avec sa destination pour connaître le nombre de personnes
+    const reservation = await prisma.reservation.findUnique({
+      where: { id },
+      include: { destination: true }
+    });
+
+    if (!reservation) {
+      return res.status(404).json({
+        success: false,
+        message: "Réservation non trouvée"
+      });
+    }
+
+    // Utiliser une transaction pour supprimer la réservation et restaurer les places
+    const resultat = await prisma.$transaction(async (prisma) => {
+      // Supprimer la réservation
+      const reservationSupprimee = await prisma.reservation.delete({
+        where: { id }
+      });
+
+      // Restaurer les places disponibles si la réservation n'était pas annulée
+      if (reservation.statut !== 'annulee') {
+        await prisma.destination.update({
+          where: { id: reservation.destinationId },
+          data: {
+            placesDisponibles: reservation.destination.placesDisponibles + reservation.nombrePersonnes
+          }
+        });
+      }
+
+      return reservationSupprimee;
+    });
+
+    res.json({
+      success: true,
+      message: "Réservation supprimée avec succès",
+      data: resultat
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la suppression de la réservation",
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;

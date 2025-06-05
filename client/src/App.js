@@ -53,11 +53,15 @@ function App() {
         setDestinations(data.data || []);
         setMessage(`${data.count || 0} destination(s) disponible(s)`);
       } else {
-        setMessage('Erreur lors de la récupération des destinations');
+        setMessage('❌ Erreur lors de la récupération des destinations');
+        // Scroll vers le message d'erreur
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
-      setMessage('Erreur de connexion au serveur');
+      setMessage('❌ Erreur de connexion au serveur');
       console.error('Erreur:', error);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -103,16 +107,48 @@ const fetchReservations = async () => {
       );
       
       setReservations(reservationsEnrichies);
+    } else {
+      setMessage('❌ Erreur lors de la récupération des réservations');
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch (error) {
+    setMessage('❌ Erreur de connexion au serveur');
     console.error('Erreur lors de la récupération des réservations:', error);
+    // Scroll vers le message d'erreur
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 };
 
   // Fonction pour ajouter une destination
   const addDestination = async () => {
-    if (!destinationForm.nom.trim() || !destinationForm.description.trim() || !destinationForm.prix) {
-      setMessage('Veuillez remplir tous les champs obligatoires');
+    // Validation des champs obligatoires
+    const erreurs = [];
+    
+    if (!destinationForm.nom.trim()) {
+      erreurs.push("Le nom de la destination est obligatoire");
+    }
+    
+    if (!destinationForm.description.trim()) {
+      erreurs.push("La description est obligatoire");
+    }
+    
+    if (!destinationForm.prix) {
+      erreurs.push("Le prix est obligatoire");
+    }
+    
+    if (!destinationForm.duree) {
+      erreurs.push("La durée est obligatoire");
+    }
+    
+    if (!destinationForm.placesDisponibles) {
+      erreurs.push("Le nombre de places disponibles est obligatoire");
+    }
+    
+    if (erreurs.length > 0) {
+      setMessage(`❌ ${erreurs.join('. ')}`);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -145,11 +181,22 @@ const fetchReservations = async () => {
         setMessage(`🎉 Destination "${result.data.nom}" créée avec succès !`);
       } else {
         const error = await response.json();
-        setMessage(`Erreur: ${error.message || 'Erreur lors de la création'}`);
+        
+        // Afficher les erreurs spécifiques si disponibles
+        if (error.erreurs && Array.isArray(error.erreurs) && error.erreurs.length > 0) {
+          setMessage(`❌ ${error.erreurs.join('. ')}`);
+        } else {
+          setMessage(`❌ ${error.message || 'Erreur lors de la création'}`);
+        }
+        
+        // Scroll vers le message d'erreur
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
-      setMessage('Erreur de connexion au serveur');
+      setMessage('❌ Erreur de connexion au serveur');
       console.error('Erreur:', error);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -157,10 +204,47 @@ const fetchReservations = async () => {
 
   // Fonction pour faire une réservation
   const addReservation = async () => {
-    if (!reservationForm.destinationId || !reservationForm.client.nom.trim() || 
-        !reservationForm.client.prenom.trim() || !reservationForm.client.email.trim() ||
-        !reservationForm.dateVoyage) {
-      setMessage('Veuillez remplir tous les champs obligatoires de la réservation');
+    // Validation des champs obligatoires
+    const erreurs = [];
+    
+    if (!reservationForm.destinationId) {
+      erreurs.push("Veuillez sélectionner une destination");
+    }
+    
+    if (!reservationForm.client.nom.trim()) {
+      erreurs.push("Le nom du client est obligatoire");
+    }
+    
+    if (!reservationForm.client.prenom.trim()) {
+      erreurs.push("Le prénom du client est obligatoire");
+    }
+    
+    if (!reservationForm.client.email.trim()) {
+      erreurs.push("L'email du client est obligatoire");
+    } else if (!reservationForm.client.email.includes('@')) {
+      erreurs.push("L'email doit contenir un '@'");
+    }
+    
+    if (!reservationForm.dateVoyage) {
+      erreurs.push("La date de voyage est obligatoire");
+    }
+    
+    if (erreurs.length > 0) {
+      setMessage(`❌ ${erreurs.join('. ')}`);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Vérifier s'il y a assez de places disponibles
+    const destinationId = parseInt(reservationForm.destinationId);
+    const nombrePersonnes = parseInt(reservationForm.nombrePersonnes);
+    const destinationSelectionnee = destinations.find(d => d.id === destinationId);
+    
+    if (destinationSelectionnee && destinationSelectionnee.placesDisponibles < nombrePersonnes) {
+      setMessage(`❌ Pas assez de places disponibles ! Cette destination ne dispose que de ${destinationSelectionnee.placesDisponibles} places.`);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -173,13 +257,15 @@ const fetchReservations = async () => {
         },
         body: JSON.stringify({
           ...reservationForm,
-          destinationId: parseInt(reservationForm.destinationId),
-          nombrePersonnes: parseInt(reservationForm.nombrePersonnes)
+          destinationId: destinationId,
+          nombrePersonnes: nombrePersonnes
         })
       });
 
       if (response.ok) {
         const result = await response.json();
+        // Mettre à jour les destinations pour avoir le nombre de places à jour
+        await fetchDestinations();
         await fetchReservations();
         setReservationForm({
           destinationId: '',
@@ -189,14 +275,27 @@ const fetchReservations = async () => {
           commentaires: ''
         });
         setMessage(`🎫 Réservation ${result.data.numeroReservation} créée avec succès !`);
+        // Scroll vers le message de succès
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setActiveTab('reservations');
       } else {
         const error = await response.json();
-        setMessage(`Erreur: ${error.message || 'Erreur lors de la réservation'}`);
+        
+        // Afficher les erreurs spécifiques si disponibles
+        if (error.erreurs && Array.isArray(error.erreurs) && error.erreurs.length > 0) {
+          setMessage(`❌ ${error.erreurs.join('. ')}`);
+        } else {
+          setMessage(`❌ ${error.message || 'Erreur lors de la réservation'}`);
+        }
+        
+        // Scroll vers le message d'erreur
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
-      setMessage('Erreur de connexion au serveur');
+      setMessage('❌ Erreur de connexion au serveur');
       console.error('Erreur:', error);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -223,12 +322,16 @@ const fetchReservations = async () => {
         if (error.message && error.message.includes('réservations actives')) {
           setMessage(`❌ Impossible de supprimer cette destination car elle a des réservations actives.`);
         } else {
-          setMessage(`Erreur: ${error.message || 'Erreur lors de la suppression'}`);
+          setMessage(`❌ ${error.message || 'Erreur lors de la suppression'}`);
         }
+        // Scroll vers le message d'erreur
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
-      setMessage('Erreur de connexion au serveur');
+      setMessage('❌ Erreur de connexion au serveur');
       console.error('Erreur:', error);
+      // Scroll vers le message d'erreur
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -264,19 +367,21 @@ const fetchReservations = async () => {
 
       {/* Message de statut */}
       {message && (
-        <div className={`p-4 mb-6 rounded-xl shadow-lg border-l-4 transition-all duration-500 ${
-          message.includes('Erreur') 
-            ? 'bg-red-50 text-red-800 border-red-500' 
-            : 'bg-green-50 text-green-800 border-green-500'
-        }`}>
+        <div
+          id="message-alert"
+          className={`p-4 mb-6 rounded-xl shadow-lg border-l-4 transition-all duration-500 ${
+            message.includes('Erreur') || message.includes('❌')
+              ? 'bg-red-50 text-red-800 border-red-500'
+              : 'bg-green-50 text-green-800 border-green-500'
+          }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <span className="text-2xl mr-3">
-                {message.includes('Erreur') ? '❌' : '✅'}
+                {message.includes('Erreur') || message.includes('❌') ? '❌' : '✅'}
               </span>
               <span className="font-medium">{message}</span>
             </div>
-            <button 
+            <button
               onClick={() => setMessage('')}
               className="text-gray-500 hover:text-gray-700 text-xl font-bold"
             >
@@ -545,8 +650,16 @@ const fetchReservations = async () => {
                         <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
                           ⏰ {destination.duree} jours
                         </span>
-                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
-                          👥 {destination.placesDisponibles} places
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${
+                          destination.placesDisponibles <= 0
+                            ? 'bg-red-100 text-red-800'
+                            : destination.placesDisponibles < 5
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-green-100 text-green-800'
+                        }`}>
+                          👥 {destination.placesDisponibles <= 0
+                              ? 'Complet'
+                              : `${destination.placesDisponibles} place${destination.placesDisponibles > 1 ? 's' : ''}`}
                         </span>
                         <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
                           {destination.categorie === 'ville' && '🏙️'} 
@@ -570,6 +683,13 @@ const fetchReservations = async () => {
                         
                         <button
                           onClick={() => {
+                            // Vérifier s'il y a assez de places disponibles
+                            if (destination.placesDisponibles <= 0) {
+                              setMessage(`❌ Désolé, il n'y a plus de places disponibles pour ${destination.nom}.`);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                              return;
+                            }
+                            
                             setReservationForm({...reservationForm, destinationId: destination.id.toString()});
                             setActiveTab('reservations');
                             // Ajouter un délai court pour permettre le changement d'onglet avant de scroller
@@ -581,9 +701,14 @@ const fetchReservations = async () => {
                               }
                             }, 100);
                           }}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+                          className={`font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg ${
+                            destination.placesDisponibles <= 0
+                              ? 'bg-gray-500 cursor-not-allowed'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
+                          disabled={destination.placesDisponibles <= 0}
                         >
-                          📝 Réserver
+                          {destination.placesDisponibles <= 0 ? '❌ Complet' : '📝 Réserver'}
                         </button>
                       </div>
                     </div>
@@ -849,8 +974,16 @@ const fetchReservations = async () => {
                 </div>
                 <div>
                   <span className="text-blue-700 font-medium">Places restantes :</span>
-                  <div className="text-blue-800 font-semibold">
-                    👥 {reservation.destination.placesDisponibles || 'N/A'}
+                  <div className={`font-semibold ${
+                    reservation.destination.placesDisponibles <= 0
+                      ? 'text-red-600'
+                      : reservation.destination.placesDisponibles < 5
+                        ? 'text-yellow-600'
+                        : 'text-blue-800'
+                  }`}>
+                    👥 {reservation.destination.placesDisponibles <= 0
+                        ? 'Complet'
+                        : `${reservation.destination.placesDisponibles} place${reservation.destination.placesDisponibles > 1 ? 's' : ''}`}
                   </div>
                 </div>
               </div>
