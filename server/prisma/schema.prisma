@@ -16,7 +16,6 @@ model Destination {
   image             String?
   disponible        Boolean    @default(true)
   categorie         String
-  dateDepart        DateTime
   placesDisponibles Int
   reservations      Reservation[]
   activites         Activite[]  // ← relation 1-n

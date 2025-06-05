@@ -8,7 +8,7 @@ Application web moderne pour la gestion d'une agence de voyage, permettant la cr
 # 1. Cloner et installer
 git clone <url-du-repo>
 cd travel-agency-app
-npm install
+npm run install-all
 
 # 2. Configuration base de données
 cd server

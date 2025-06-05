@@ -22,7 +22,6 @@ async function main() {
                 duree: 5,
                 image: "https://files.catbox.moe/dtixs8.jpg",
                 categorie: "ville",
-                dateDepart: new Date('2024-07-15'),
                 placesDisponibles: 25
             },
             create: {
@@ -33,7 +32,6 @@ async function main() {
                 duree: 5,
                 image: "https://files.catbox.moe/dtixs8.jpg",
                 categorie: "ville",
-                dateDepart: new Date('2024-07-15'),
                 placesDisponibles: 25,
                 activites: {
                     create: [
@@ -55,7 +53,6 @@ async function main() {
                 duree: 8,
                 image: "https://files.catbox.moe/q5gimm.jpg",
                 categorie: "plage",
-                dateDepart: new Date('2024-08-01'),
                 placesDisponibles: 15,
                 activites: {
                     create: [
@@ -77,7 +74,6 @@ async function main() {
                 duree: 7,
                 image: "https://files.catbox.moe/o8agfi.jpg",
                 categorie: "ville",
-                dateDepart: new Date('2024-09-10'),
                 placesDisponibles: 20,
                 activites: {
                     create: [
@@ -99,7 +95,6 @@ async function main() {
                 duree: 4,
                 image: "https://files.catbox.moe/f0enrb.jpg",
                 categorie: "culture",
-                dateDepart: new Date('2024-06-20'),
                 placesDisponibles: 30,
                 activites: {
                     create: [
@@ -121,7 +116,6 @@ async function main() {
                 duree: 6,
                 image: "https://files.catbox.moe/stn5pg.jpeg",
                 categorie: "ville",
-                dateDepart: new Date('2024-10-01'),
                 placesDisponibles: 18,
                 activites: {
                     create: [
@@ -143,7 +137,6 @@ async function main() {
                 duree: 10,
                 image: "https://files.catbox.moe/0ifwwj.jpg",
                 categorie: "plage",
-                dateDepart: new Date('2024-11-15'),
                 placesDisponibles: 12,
                 activites: {
                     create: [

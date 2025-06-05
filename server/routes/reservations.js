@@ -12,46 +12,60 @@ function genererNumeroReservation() {
 }
 
 
-// Fonction pour valider les données de réservation
+// Fonction pour valider les données de réservation (VERSION CORRIGÉE)
 function validerDonneesReservation(data) {
-    const erreurs = [];
+  const erreurs = [];
 
-    if (!data.destinationId || isNaN(parseInt(data.destinationId))) {
-        erreurs.push("ID de destination invalide");
+  // Validation ID destination
+  if (!data.destinationId || isNaN(parseInt(data.destinationId))) {
+    erreurs.push("ID de destination invalide");
+  }
+
+  // Validation informations client
+  if (!data.client) {
+    erreurs.push("Informations client manquantes");
+  } else {
+    if (!data.client.nom || data.client.nom.trim().length < 2) {
+      erreurs.push("Le nom du client doit contenir au moins 2 caractères");
+    }
+    if (!data.client.prenom || data.client.prenom.trim().length < 2) {
+      erreurs.push("Le prénom du client doit contenir au moins 2 caractères");
+    }
+    if (!data.client.email || !data.client.email.includes('@')) {
+      erreurs.push("Email invalide");
     }
 
-    if (!data.client) {
-        erreurs.push("Informations client manquantes");
-    } else {
-        if (!data.client.nom || data.client.nom.trim().length < 2) {
-            erreurs.push("Le nom du client doit contenir au moins 2 caractères");
-        }
-        if (!data.client.prenom || data.client.prenom.trim().length < 2) {
-            erreurs.push("Le prénom du client doit contenir au moins 2 caractères");
-        }
-        if (!data.client.email || !data.client.email.includes('@')) {
-            erreurs.push("Email invalide");
-        }
-        if (!data.client.telephone || data.client.telephone.length < 10) {
-            erreurs.push("Numéro de téléphone invalide");
-        }
+    // 🔧 CORRECTION : Téléphone optionnel mais validé si fourni
+    if (data.client.telephone && data.client.telephone.trim().length > 0) {
+      const telephoneClean = data.client.telephone.replace(/\s/g, ''); // Enlever les espaces
+      if (telephoneClean.length < 10) {
+        erreurs.push("Le téléphone doit contenir au moins 10 chiffres");
+      }
     }
+  }
 
-    if (!data.nombrePersonnes || data.nombrePersonnes < 1 || data.nombrePersonnes > 10) {
-        erreurs.push("Le nombre de personnes doit être entre 1 et 10");
+  // Validation nombre de personnes
+  if (!data.nombrePersonnes || data.nombrePersonnes < 1 || data.nombrePersonnes > 10) {
+    erreurs.push("Le nombre de personnes doit être entre 1 et 10");
+  }
+
+  // Validation date de voyage
+  if (!data.dateVoyage) {
+    erreurs.push("Date de voyage manquante");
+  } else {
+    const dateVoyage = new Date(data.dateVoyage);
+    const aujourdhui = new Date();
+
+    // Réinitialiser les heures pour comparer uniquement les dates
+    aujourdhui.setHours(0, 0, 0, 0);
+    dateVoyage.setHours(0, 0, 0, 0);
+
+    if (dateVoyage <= aujourdhui) {
+      erreurs.push("La date de voyage doit être dans le futur");
     }
+  }
 
-    if (!data.dateVoyage) {
-        erreurs.push("Date de voyage manquante");
-    } else {
-        const dateVoyage = new Date(data.dateVoyage);
-        const aujourdhui = new Date();
-        if (dateVoyage <= aujourdhui) {
-            erreurs.push("La date de voyage doit être dans le futur");
-        }
-    }
-
-    return erreurs;
+  return erreurs;
 }
 
 router.get('/:id', async (req, res) => {

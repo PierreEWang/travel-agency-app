@@ -169,7 +169,7 @@ router.post('/', async (req, res) => {
     try {
         const {
             nom, description, prix, duree, image,
-            categorie, activites, dateDepart, placesDisponibles
+            categorie, activites, placesDisponibles
         } = req.body;
 
         // Validation des données
@@ -197,7 +197,6 @@ router.post('/', async (req, res) => {
             image: image || "https://via.placeholder.com/400x300",
             disponible: true,
             categorie: categorie.toLowerCase(),
-            dateDepart: dateDepart ? new Date(dateDepart) : new Date(),
             placesDisponibles: placesDisponibles || 20
         };
 
@@ -243,7 +242,7 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const { nom, description, prix, duree, image, categorie, dateDepart, placesDisponibles, disponible } = req.body;
+        const { nom, description, prix, duree, image, categorie, placesDisponibles, disponible } = req.body;
 
         // Vérifier si la destination existe
         const destinationExistante = await prisma.destination.findUnique({
@@ -265,7 +264,6 @@ router.put('/:id', async (req, res) => {
         if (duree) updateData.duree = parseInt(duree);
         if (image) updateData.image = image;
         if (categorie) updateData.categorie = categorie.toLowerCase();
-        if (dateDepart) updateData.dateDepart = new Date(dateDepart);
         if (placesDisponibles !== undefined) updateData.placesDisponibles = parseInt(placesDisponibles);
         if (disponible !== undefined) updateData.disponible = disponible;
 

@@ -15,8 +15,7 @@ function App() {
     prix: '',
     duree: '',
     categorie: 'ville',
-    placesDisponibles: '',
-    dateDepart: ''
+    placesDisponibles: ''
   });
   
   const [reservationForm, setReservationForm] = useState({
@@ -128,8 +127,7 @@ const fetchReservations = async () => {
           ...destinationForm,
           prix: parseFloat(destinationForm.prix),
           duree: parseInt(destinationForm.duree),
-          placesDisponibles: parseInt(destinationForm.placesDisponibles),
-          dateDepart: destinationForm.dateDepart || new Date().toISOString().split('T')[0]
+          placesDisponibles: parseInt(destinationForm.placesDisponibles)
         })
       });
 
@@ -142,8 +140,7 @@ const fetchReservations = async () => {
           prix: '',
           duree: '',
           categorie: 'ville',
-          placesDisponibles: '',
-          dateDepart: ''
+          placesDisponibles: ''
         });
         setMessage(`🎉 Destination "${result.data.nom}" créée avec succès !`);
       } else {
@@ -222,7 +219,12 @@ const fetchReservations = async () => {
         setMessage('🗑️ Destination supprimée avec succès !');
       } else {
         const error = await response.json();
-        setMessage(`Erreur: ${error.message || 'Erreur lors de la suppression'}`);
+        // Afficher un message plus clair pour les réservations actives
+        if (error.message && error.message.includes('réservations actives')) {
+          setMessage(`❌ Impossible de supprimer cette destination car elle a des réservations actives.`);
+        } else {
+          setMessage(`Erreur: ${error.message || 'Erreur lors de la suppression'}`);
+        }
       }
     } catch (error) {
       setMessage('Erreur de connexion au serveur');
@@ -406,18 +408,6 @@ const fetchReservations = async () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  📅 Date de départ
-                </label>
-                <input
-                  type="date"
-                  value={destinationForm.dateDepart}
-                  onChange={(e) => setDestinationForm({...destinationForm, dateDepart: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  disabled={loading}
-                />
-              </div>
             </div>
             
             <div className="mt-6">
@@ -582,6 +572,14 @@ const fetchReservations = async () => {
                           onClick={() => {
                             setReservationForm({...reservationForm, destinationId: destination.id.toString()});
                             setActiveTab('reservations');
+                            // Ajouter un délai court pour permettre le changement d'onglet avant de scroller
+                            setTimeout(() => {
+                              // Scroll vers le formulaire de réservation
+                              const reservationForm = document.querySelector('.reservation-form');
+                              if (reservationForm) {
+                                reservationForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }, 100);
                           }}
                           className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
                         >
@@ -601,7 +599,7 @@ const fetchReservations = async () => {
       {activeTab === 'reservations' && (
         <div className="space-y-8">
           {/* Formulaire de réservation */}
-          <section className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+          <section className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 reservation-form">
             <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
               <span className="text-4xl mr-3">📝</span>
               Nouvelle réservation
