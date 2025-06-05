@@ -2,6 +2,152 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const router = express.Router();
 const prisma = new PrismaClient();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configuration de multer pour le stockage des fichiers
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    // Générer un nom de fichier unique avec timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'destination-' + uniqueSuffix + ext);
+  }
+});
+
+// Filtre pour n'accepter que les images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Le fichier doit être une image'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Limite à 5MB
+  }
+});
+
+// POST /api/destinations/upload-image - Upload d'une image
+router.post('/upload-image', upload.single('imageFile'), async (req, res) => {
+  try {
+    // Vérifier si un fichier a été uploadé
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Aucun fichier n'a été uploadé"
+      });
+    }
+
+    // Retourner le chemin de l'image
+    const imagePath = `/uploads/${req.file.filename}`;
+    
+    res.json({
+      success: true,
+      message: "Image uploadée avec succès",
+      imagePath: imagePath
+    });
+  } catch (error) {
+    // Si une erreur survient et qu'un fichier a été uploadé, on le supprime
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de l'upload de l'image",
+      error: error.message
+    });
+  }
+});
+
+// POST /api/destinations/:id/update-image - Mettre à jour l'image d'une destination
+router.post('/:id/update-image', upload.single('imageFile'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      // Si un fichier a été uploadé mais que l'ID est invalide, on le supprime
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: "ID invalide"
+      });
+    }
+
+    // Vérifier si la destination existe
+    const destinationExistante = await prisma.destination.findUnique({
+      where: { id }
+    });
+
+    if (!destinationExistante) {
+      // Si un fichier a été uploadé mais que la destination n'existe pas, on le supprime
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({
+        success: false,
+        message: "Destination non trouvée"
+      });
+    }
+
+    // Vérifier si un fichier a été uploadé
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Aucun fichier n'a été uploadé"
+      });
+    }
+
+    // Si l'ancienne image était un fichier uploadé, on la supprime
+    if (destinationExistante.image && destinationExistante.image.startsWith('/uploads/')) {
+      const oldImagePath = path.join('.', destinationExistante.image);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    // Mettre à jour l'image de la destination
+    const imagePath = `/uploads/${req.file.filename}`;
+    
+    const destinationMiseAJour = await prisma.destination.update({
+      where: { id },
+      data: {
+        image: imagePath
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "Image mise à jour avec succès",
+      data: {
+        id: destinationMiseAJour.id,
+        imagePath: imagePath
+      }
+    });
+  } catch (error) {
+    // Si une erreur survient et qu'un fichier a été uploadé, on le supprime
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la mise à jour de l'image",
+      error: error.message
+    });
+  }
+});
 
 // GET /api/destinations - Lister toutes les destinations
 router.get('/', async (req, res) => {
@@ -322,6 +468,14 @@ router.delete('/:id', async (req, res) => {
                 success: false,
                 message: "Impossible de supprimer: cette destination a des réservations actives"
             });
+        }
+
+        // Supprimer le fichier image si c'est un fichier uploadé
+        if (destinationExistante.image && destinationExistante.image.startsWith('/uploads/')) {
+            const imagePath = path.join('.', destinationExistante.image);
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+            }
         }
 
         // Supprimer d'abord les activités liées, puis la destination

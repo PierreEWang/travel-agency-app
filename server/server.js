@@ -37,6 +37,9 @@ app.use(rateLimiter(15 * 60 * 1000, 100)); // 100 requêtes par 15 minutes
 app.use(sanitizeInput);
 app.use(validateJsonData);
 
+// Servir les fichiers statiques depuis le dossier uploads
+app.use('/uploads', express.static('./uploads'));
+
 // Route de santé
 app.get('/health', (req, res) => {
     res.json({

@@ -3,7 +3,14 @@
 // Middleware pour valider les données JSON
 function validateJsonData(req, res, next) {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-    const contentType = req.headers['content-type'];
+    const contentType = req.headers['content-type'] || '';
+    
+    // Ignorer la validation pour les requêtes multipart/form-data (upload de fichiers)
+    if (contentType.includes('multipart/form-data')) {
+      return next();
+    }
+    
+    // Valider que le Content-Type est application/json pour les autres requêtes
     if (!contentType || !contentType.includes('application/json')) {
       return res.status(400).json({
         success: false,

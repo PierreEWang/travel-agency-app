@@ -15,8 +15,13 @@ function App() {
     prix: '',
     duree: '',
     categorie: 'ville',
-    placesDisponibles: ''
+    placesDisponibles: '',
+    imageUrl: ''
   });
+  
+  // État pour le fichier image
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   
   const [reservationForm, setReservationForm] = useState({
     destinationId: '',
@@ -120,6 +125,25 @@ const fetchReservations = async () => {
   }
 };
 
+  // Fonction pour gérer la sélection d'un fichier image
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      
+      // Créer une URL pour la prévisualisation
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+  
+  // Fonction pour réinitialiser l'image
+  const resetImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setDestinationForm({...destinationForm, imageUrl: ''});
+  };
+
   // Fonction pour ajouter une destination
   const addDestination = async () => {
     // Validation des champs obligatoires
@@ -154,30 +178,75 @@ const fetchReservations = async () => {
 
     try {
       setLoading(true);
+      
+      // Déterminer l'image à utiliser
+      let imagePath = null;
+      
+      // Si un fichier a été sélectionné, l'uploader d'abord
+      if (imageFile) {
+        const imageFormData = new FormData();
+        imageFormData.append('imageFile', imageFile);
+        
+        const imageUploadResponse = await fetch(`${API_URL}/destinations/upload-image`, {
+          method: 'POST',
+          body: imageFormData
+        });
+        
+        if (imageUploadResponse.ok) {
+          const imageResult = await imageUploadResponse.json();
+          imagePath = imageResult.imagePath;
+        } else {
+          const error = await imageUploadResponse.json();
+          setMessage(`❌ Erreur lors de l'upload de l'image: ${error.message || 'Erreur inconnue'}`);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setLoading(false);
+          return;
+        }
+      } else if (destinationForm.imageUrl) {
+        // Utiliser l'URL fournie
+        imagePath = destinationForm.imageUrl;
+      }
+      
+      // Créer l'objet de données pour la destination
+      const destinationData = {
+        nom: destinationForm.nom.trim(),
+        description: destinationForm.description.trim(),
+        prix: parseFloat(destinationForm.prix),
+        duree: parseInt(destinationForm.duree),
+        categorie: destinationForm.categorie.toLowerCase(),
+        placesDisponibles: parseInt(destinationForm.placesDisponibles),
+        image: imagePath || "https://via.placeholder.com/400x300"
+      };
+      
+      // Si des activités sont fournies, les ajouter
+      if (destinationForm.activites) {
+        destinationData.activites = destinationForm.activites;
+      }
+      
+      // Envoyer les données de la destination en JSON
       const response = await fetch(`${API_URL}/destinations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...destinationForm,
-          prix: parseFloat(destinationForm.prix),
-          duree: parseInt(destinationForm.duree),
-          placesDisponibles: parseInt(destinationForm.placesDisponibles)
-        })
+        body: JSON.stringify(destinationData)
       });
 
       if (response.ok) {
         const result = await response.json();
         await fetchDestinations();
+        // Réinitialiser le formulaire
         setDestinationForm({
           nom: '',
           description: '',
           prix: '',
           duree: '',
           categorie: 'ville',
-          placesDisponibles: ''
+          placesDisponibles: '',
+          imageUrl: ''
         });
+        setImageFile(null);
+        setImagePreview(null);
         setMessage(`🎉 Destination "${result.data.nom}" créée avec succès !`);
       } else {
         const error = await response.json();
@@ -514,6 +583,76 @@ const fetchReservations = async () => {
               </div>
 
             </div>
+
+            {/* Section pour l'image */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center">
+                <span className="text-xl mr-2">🖼️</span>
+                Image de la destination
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Option 1: URL d'image */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    🔗 URL de l'image
+                  </label>
+                  <input
+                    type="text"
+                    value={destinationForm.imageUrl}
+                    onChange={(e) => setDestinationForm({...destinationForm, imageUrl: e.target.value})}
+                    placeholder="https://exemple.com/image.jpg"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    disabled={loading || imageFile !== null}
+                  />
+                  {imageFile && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      ℹ️ Supprimez d'abord le fichier pour utiliser une URL
+                    </p>
+                  )}
+                </div>
+                
+                {/* Option 2: Upload de fichier */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    📤 Télécharger une image
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    disabled={loading || destinationForm.imageUrl !== ''}
+                  />
+                  {destinationForm.imageUrl && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      ℹ️ Supprimez d'abord l'URL pour télécharger un fichier
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Prévisualisation de l'image */}
+              {(imagePreview || destinationForm.imageUrl) && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Prévisualisation :</p>
+                  <div className="relative w-full max-w-md mx-auto">
+                    <img
+                      src={imagePreview || destinationForm.imageUrl}
+                      alt="Prévisualisation"
+                      className="w-full h-48 object-cover rounded-lg border-2 border-blue-200"
+                    />
+                    <button
+                      onClick={resetImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                      title="Supprimer l'image"
+                    >
+                      ✖️
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="mt-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -614,8 +753,8 @@ const fetchReservations = async () => {
                   >
                     {destination.image && (
                       <div className="relative">
-                        <img 
-                          src={destination.image} 
+                        <img
+                          src={destination.image.startsWith('http') ? destination.image : `http://localhost:5000${destination.image}`}
                           alt={destination.nom}
                           className="w-full h-48 object-cover"
                         />
@@ -944,6 +1083,16 @@ const fetchReservations = async () => {
           {/* 🎯 NOUVEAU : Informations détaillées de la destination */}
           {reservation.destination && (
             <div className="bg-blue-50 p-4 rounded-xl mb-4">
+              {/* Image de la destination */}
+              {reservation.destination.image && (
+                <div className="mb-4">
+                  <img
+                    src={reservation.destination.image.startsWith('http') ? reservation.destination.image : `http://localhost:5000${reservation.destination.image}`}
+                    alt={reservation.destination.nom}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                </div>
+              )}
               <h5 className="font-semibold text-blue-900 mb-2 flex items-center">
                 <span className="mr-2">🌍</span>
                 Détails de la destination
