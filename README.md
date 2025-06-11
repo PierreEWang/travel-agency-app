@@ -4,21 +4,47 @@ Application web moderne pour la gestion d'une agence de voyage, permettant la cr
 
 ## 🚀 Quick Start
 
+### Option 1: Installation rapide (recommandée)
+
 ```bash
+# 1. Cloner le repo
+git clone <url-du-repo>
+cd travel-agency-app
+
+# 2. Installation complète en une seule commande
+npm run setup
+
+# 3. Lancer l'application
+npm run dev-full
+```
+
+Cette commande unique `npm run setup` va:
+- Installer toutes les dépendances (racine, client et serveur)
+- Créer le dossier `uploads` nécessaire pour les images
+- Configurer la base de données (copie du fichier .env, migrations, données initiales)
+
+Le script d'installation est compatible avec Windows et autres systèmes d'exploitation.
+
+### Option 2: Installation manuelle (PowerShell)
+
+```powershell
 # 1. Cloner et installer
 git clone <url-du-repo>
 cd travel-agency-app
-npm run install-all
+npm install
+cd client; npm install
+cd ../server; npm install
 
 # 2. Configuration base de données
 cd server
-cp .env.example .env
+copy .env.example .env
+if (-not (Test-Path uploads)) { mkdir uploads }
 npx prisma migrate dev
 node prisma/seed.js
 
 # 3. Lancer l'application
 cd ..
-npm run dev
+npm run dev-full
 ```
 
 **Accès :**
@@ -66,9 +92,11 @@ travel-agency-app/
 ## 📝 Scripts disponibles
 
 ```bash
-npm run dev         # Lance client + serveur
-npm run client      # React uniquement
-npm run server      # Express uniquement
+npm run setup       # Installation complète (dépendances + configuration BDD)
+npm run install-all # Installe toutes les dépendances
+npm run dev-full    # Lance client + serveur en parallèle
+npm run client      # Lance React uniquement
+npm run server      # Lance Express uniquement
 npm run build       # Build de production
 npm run test        # Tests unitaires
 ```

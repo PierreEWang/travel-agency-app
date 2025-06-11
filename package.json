@@ -16,8 +16,8 @@
   "author": "Votre Nom",
   "license": "MIT",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "cd server && node server.js",
+    "dev": "cd server && nodemon server.js",
     "test": "cross-env NODE_ENV=test DATABASE_URL=\"file:./test.db\" jest",
     "test:watch": "cross-env NODE_ENV=test DATABASE_URL=\"file:./test.db\" jest --watch",
     "test:coverage": "cross-env NODE_ENV=test DATABASE_URL=\"file:./test.db\" jest --coverage",
@@ -27,7 +27,12 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "node prisma/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "setup": "node setup.js",
+    "client": "cd client && npm start",
+    "server": "cd server && npm run dev",
+    "dev-full": "concurrently \"npm run server\" \"npm run client\""
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
@@ -38,6 +43,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
